@@ -66,6 +66,24 @@ func TestTreatmentVariantKey(t *testing.T) {
 	}
 }
 
+func TestEvalContextAttribute(t *testing.T) {
+	ctx := EvalContext{Attributes: map[string]string{"plan": "pro", "name": ""}}
+	if v, ok := ctx.Attribute("plan"); !ok || v != "pro" {
+		t.Fatalf("explicit non-empty value: got (%q,%v)", v, ok)
+	}
+	// 显式空值视为已提供。
+	if v, ok := ctx.Attribute("name"); !ok || v != "" {
+		t.Fatalf("explicit empty value should be present: got (%q,%v)", v, ok)
+	}
+	// 缺失属性不得被报告为已提供。
+	if _, ok := ctx.Attribute("missing"); ok {
+		t.Fatal("missing attribute must not be reported as present")
+	}
+	if _, ok := (EvalContext{}).Attribute("anything"); ok {
+		t.Fatal("missing attribute on nil map must not be reported as present")
+	}
+}
+
 func TestCloneIsDeep(t *testing.T) {
 	f := &Flag{Key: "k", Variants: []Variant{{Key: "a"}}, Rules: []Rule{{ID: "r", SegmentIDs: []string{"s"}}}}
 	cp := f.Clone()

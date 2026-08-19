@@ -49,6 +49,29 @@ func TestMatchAttributeOps(t *testing.T) {
 	}
 }
 
+func TestMatchNeqMissingAttribute(t *testing.T) {
+	seg := &model.Segment{ID: "n", Rules: []model.SegmentRule{{Attribute: "plan", Op: "neq", Value: "free"}}}
+	// 缺失属性不得满足 neq，否则缺少该属性的目标会被误判为命中。
+	if MatchSegment(seg, model.EvalContext{Attributes: map[string]string{}}) {
+		t.Fatal("missing attribute must not satisfy neq")
+	}
+	if MatchSegment(seg, model.EvalContext{Attributes: map[string]string{"other": "x"}}) {
+		t.Fatal("missing attribute must not satisfy neq")
+	}
+	// 显式空值同样视为「已提供」，空不等于 "free" 故命中。
+	if !MatchSegment(seg, model.EvalContext{Attributes: map[string]string{"plan": ""}}) {
+		t.Fatal("explicit empty value should satisfy neq against non-empty")
+	}
+	// 实际不等则命中。
+	if !MatchSegment(seg, model.EvalContext{Attributes: map[string]string{"plan": "pro"}}) {
+		t.Fatal("unequal value should satisfy neq")
+	}
+	// 实际相等则不命中。
+	if MatchSegment(seg, model.EvalContext{Attributes: map[string]string{"plan": "free"}}) {
+		t.Fatal("equal value must not satisfy neq")
+	}
+}
+
 func TestMatchEmptySegment(t *testing.T) {
 	seg := &model.Segment{ID: "empty"}
 	if MatchSegment(seg, model.EvalContext{TargetKey: "x"}) {

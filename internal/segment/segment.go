@@ -32,9 +32,11 @@ func MatchSegment(seg *model.Segment, ctx model.EvalContext) bool {
 }
 
 // matchRuleAttr 按操作符比较上下文属性值与谓词值。
+// 缺失属性对任何操作符都不满足谓词：neq 也不例外，否则缺少该属性的目标
+// 会被误判为「不等于指定值」从而命中分群。
 func matchRuleAttr(r model.SegmentRule, ctx model.EvalContext) bool {
 	val, present := ctx.Attribute(r.Attribute)
-	if !present && r.Op != "neq" {
+	if !present {
 		return false
 	}
 	switch r.Op {

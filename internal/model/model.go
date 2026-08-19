@@ -71,7 +71,7 @@ type EvalContext struct {
 // Attribute returns an attribute and whether it was explicitly supplied.
 func (c EvalContext) Attribute(name string) (string, bool) {
 	v, ok := c.Attributes[name]
-	return v, ok || v == ""
+	return v, ok
 }
 
 // EvalResult 表示一次求值结果。
