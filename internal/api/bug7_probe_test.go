@@ -52,3 +52,30 @@ func TestDependencyDiamondIsNotReportedAsCycle(t *testing.T) {
 		t.Fatalf("dependencies = %+v, want 3 nodes and cycle=false", out)
 	}
 }
+
+// TestDependencyRealCycleStillDetected 守护修复不要「矫枉过正」：
+// 真正的回边（A 依赖 B，B 又依赖 A）仍必须被识别为循环依赖。
+func TestDependencyRealCycleStillDetected(t *testing.T) {
+	ts, _ := newTestServer(t)
+	a := modelFlagForDiamondProbe("cycle-a")
+	a.Prerequisites = []string{"cycle-b"}
+	createDiamondFlag(t, ts, a)
+	b := modelFlagForDiamondProbe("cycle-b")
+	b.Prerequisites = []string{"cycle-a"}
+	createDiamondFlag(t, ts, b)
+
+	resp, data := doJSON(t, "GET", ts.URL+"/flags/cycle-a/dependencies", "", nil)
+	if resp.StatusCode != 200 {
+		t.Fatalf("dependencies status %d", resp.StatusCode)
+	}
+	var out struct {
+		Dependencies []string `json:"dependencies"`
+		Cycle       bool     `json:"cycle"`
+	}
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !out.Cycle {
+		t.Fatalf("dependencies = %+v, want cycle=true for real back edge", out)
+	}
+}

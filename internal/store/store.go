@@ -116,12 +116,14 @@ func (s *Store) DependencyClosure(key string) (deps, disabled, missing []string,
 	seen := map[string]bool{}
 	var walk func(string)
 	walk = func(cur string) {
+		// state==1: 当前节点位于递归栈上（灰），再次遇到它才是真正的回边 -> 循环依赖。
 		if state[cur] == 1 {
 			cycle = true
 			return
 		}
+		// state==2: 该节点已完整处理（黑）。菱形依赖会让两个分支汇入同一底层开关，
+		// 第二次到达时它已是 state==2，这是「共享依赖」而非循环，直接返回即可。
 		if state[cur] == 2 {
-			cycle = true
 			return
 		}
 		f, ok := s.flags[cur]
