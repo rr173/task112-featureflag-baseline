@@ -39,12 +39,15 @@ func (s *Server) handleEvaluateGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) model.EvalResult {
+	targetKey = model.NormalizeTargetKey(targetKey)
 	f, ok := s.store.GetFlag(flagKey)
 	if !ok {
+		// 评估不存在的开关也属于一次可观测的求值：记录 error 结果，
+		// 使失败结果进入求值审计与统计，而非只回错误响应却无迹可查。
 		res := model.NewErrorResult(flagKey)
+		_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
 		return res
 	}
-	targetKey = model.NormalizeTargetKey(targetKey)
 	ctx := model.EvalContext{TargetKey: targetKey, Attributes: attrs}
 	// 依赖检查：任一前置开关缺失或停用，则回落默认变量。
 	if !s.store.PrerequisitesSatisfied(f.Key) {
