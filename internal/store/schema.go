@@ -1,9 +1,19 @@
 package store
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
-func loadEvaluationCount(_ *sql.DB, count *int64) error {
-	*count = 0
+// loadEvaluationCount 恢复进程重启前已累计的求值次数。
+// 每次求值（RecordEvaluationResult）都会向 evaluations 表写入一行，
+// 因此该表的行数即为累计求值次数；重启后从该表恢复，使计数继续累加而非归零。
+func loadEvaluationCount(db *sql.DB, count *int64) error {
+	var c int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM evaluations`).Scan(&c); err != nil {
+		return fmt.Errorf("store: load evaluation count: %w", err)
+	}
+	*count = c
 	return nil
 }
 
