@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 	"strconv"
-	"strings"
 
 	"task112-featureflag/internal/eval"
 	"task112-featureflag/internal/evalreport"
@@ -46,7 +45,7 @@ func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) mo
 		_ = s.store.RecordEvaluationResult(flagKey, model.NormalizeTargetKey(targetKey), res)
 		return res
 	}
-	targetKey = strings.TrimSpace(targetKey)
+	targetKey = model.NormalizeTargetKey(targetKey)
 	ctx := model.EvalContext{TargetKey: targetKey, Attributes: attrs}
 	// 依赖检查：任一前置开关缺失或停用，则回落默认变量。
 	if !s.store.PrerequisitesSatisfied(f.Key) {

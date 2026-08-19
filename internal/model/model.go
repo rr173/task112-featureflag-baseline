@@ -258,6 +258,10 @@ func NormalizeActor(actor string) string {
 
 // NormalizeTargetKey gives empty evaluation identities a stable persisted name.
 func NormalizeTargetKey(target string) string {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return "anonymous"
+	}
 	return target
 }
 
