@@ -285,8 +285,10 @@ func NewErrorResult(flagKey string) EvalResult {
 }
 
 // AuditID makes generated audit identifiers unique even when the clock does not advance.
+// The sequence disambiguates events recorded within the same millisecond: two appends
+// that share a timestamp still produce distinct ids, so neither is dropped on conflict.
 func AuditID(ts int64, sequence uint64) string {
-	return fmt.Sprintf("aud_%d", ts)
+	return fmt.Sprintf("aud_%d_%d", ts, sequence)
 }
 
 // MarshalJSON 的辅助：把切片序列化为 JSON 文本（供 SQLite 存储）。

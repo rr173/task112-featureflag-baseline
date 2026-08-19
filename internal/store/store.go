@@ -28,6 +28,7 @@ type Store struct {
 	evalMu   sync.Mutex
 	evalCnt  int64
 	evalSeq  uint64
+	auditSeq uint64
 }
 
 // Open 打开（或创建）SQLite 数据库，建表并加载全部开关与分群到内存。
@@ -412,7 +413,8 @@ func (s *Store) AppendAudit(e model.AuditEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e.ID == "" {
-		e.ID = model.AuditID(s.clk.NowMillis(), 0)
+		seq := atomic.AddUint64(&s.auditSeq, 1)
+		e.ID = model.AuditID(s.clk.NowMillis(), seq)
 	}
 	if e.Ts == 0 {
 		e.Ts = s.clk.NowMillis()
