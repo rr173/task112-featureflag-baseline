@@ -17,7 +17,7 @@ func BuildSummary(audits []Audit) Summary {
 	byReason := make(map[string]int)
 	for _, audit := range audits {
 		identities[audit.Identity] = struct{}{}
-		byReason[audit.Rule]++
+		byReason[audit.Reason]++
 	}
 	return Summary{
 		Total:       len(audits),

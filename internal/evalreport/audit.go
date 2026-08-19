@@ -6,7 +6,8 @@ type Audit struct {
 	Flag      string
 	Identity  string
 	Enabled   bool
-	Rule      string
+	Variant   string
+	Reason    string
 	Evaluated int64
 }
 

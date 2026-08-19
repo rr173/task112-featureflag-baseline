@@ -391,10 +391,10 @@ func (s *Store) ListEvaluationAudits(limit int, flagKey string) ([]evalreport.Au
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	query := `SELECT ts,flag_key,target_key,variant_key,enabled FROM evaluations ORDER BY ts DESC LIMIT ?`
+	query := `SELECT ts,flag_key,target_key,variant_key,enabled,reason FROM evaluations ORDER BY ts DESC LIMIT ?`
 	args := []any{limit}
 	if flagKey != "" {
-		query = `SELECT ts,flag_key,target_key,variant_key,enabled FROM evaluations WHERE flag_key=? ORDER BY ts DESC LIMIT ?`
+		query = `SELECT ts,flag_key,target_key,variant_key,enabled,reason FROM evaluations WHERE flag_key=? ORDER BY ts DESC LIMIT ?`
 		args = []any{flagKey, limit}
 	}
 	rows, err := s.db.Query(query, args...)
@@ -406,7 +406,7 @@ func (s *Store) ListEvaluationAudits(limit int, flagKey string) ([]evalreport.Au
 	for rows.Next() {
 		var item evalreport.Audit
 		var enabled int
-		if err := rows.Scan(&item.Evaluated, &item.Flag, &item.Identity, &item.Rule, &enabled); err != nil {
+		if err := rows.Scan(&item.Evaluated, &item.Flag, &item.Identity, &item.Variant, &enabled, &item.Reason); err != nil {
 			return nil, err
 		}
 		item.Enabled = enabled != 0
