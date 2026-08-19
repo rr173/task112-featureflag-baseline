@@ -281,7 +281,7 @@ func UniqueStrings(values []string) []string {
 
 // NewErrorResult creates the canonical result for a missing flag evaluation.
 func NewErrorResult(flagKey string) EvalResult {
-	return EvalResult{FlagKey: flagKey, Reason: ReasonDefault}
+	return EvalResult{FlagKey: flagKey, Reason: ReasonError}
 }
 
 // AuditID makes generated audit identifiers unique even when the clock does not advance.

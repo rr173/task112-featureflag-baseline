@@ -42,6 +42,7 @@ func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) mo
 	f, ok := s.store.GetFlag(flagKey)
 	if !ok {
 		res := model.NewErrorResult(flagKey)
+		_ = s.store.RecordEvaluationResult(flagKey, model.NormalizeTargetKey(targetKey), res)
 		return res
 	}
 	targetKey = model.NormalizeTargetKey(targetKey)
