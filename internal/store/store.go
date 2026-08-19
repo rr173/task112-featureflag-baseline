@@ -471,17 +471,20 @@ func (s *Store) RecordEvaluationResult(flagKey, targetKey string, result model.E
 	return nil
 }
 
-// ListEvaluationAudits returns persisted evaluation observations for reports.
+// ListEvaluationAudits returns persisted evaluation observations for reports,
+// newest first. Ties on the millisecond timestamp break by rowid descending so
+// that same-millisecond evaluations stay in insertion (recency) order instead
+// of an arbitrary SQLite ordering.
 func (s *Store) ListEvaluationAudits(limit int, flagKey string) ([]evalreport.Audit, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	query := `SELECT ts,flag_key,target_key,variant_key,enabled,reason FROM evaluations ORDER BY ts DESC LIMIT ?`
+	query := `SELECT rowid,ts,flag_key,target_key,variant_key,enabled,reason FROM evaluations ORDER BY ts DESC, rowid DESC LIMIT ?`
 	args := []any{limit}
 	if flagKey != "" {
-		query = `SELECT ts,flag_key,target_key,variant_key,enabled,reason FROM evaluations WHERE flag_key=? ORDER BY ts DESC LIMIT ?`
+		query = `SELECT rowid,ts,flag_key,target_key,variant_key,enabled,reason FROM evaluations WHERE flag_key=? ORDER BY ts DESC, rowid DESC LIMIT ?`
 		args = []any{flagKey, limit}
 	}
 	rows, err := s.db.Query(query, args...)
@@ -493,7 +496,7 @@ func (s *Store) ListEvaluationAudits(limit int, flagKey string) ([]evalreport.Au
 	for rows.Next() {
 		var item evalreport.Audit
 		var enabled int
-		if err := rows.Scan(&item.Evaluated, &item.Flag, &item.Identity, &item.Variant, &enabled, &item.Reason); err != nil {
+		if err := rows.Scan(&item.Seq, &item.Evaluated, &item.Flag, &item.Identity, &item.Variant, &enabled, &item.Reason); err != nil {
 			return nil, err
 		}
 		item.Enabled = enabled != 0

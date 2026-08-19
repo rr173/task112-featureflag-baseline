@@ -1,12 +1,16 @@
 package evalreport
 
-// SelectRecent returns at most limit observations in evaluation time order.
-// The copy protects the caller from accidental reordering of its store-backed
-// slice when a report is assembled with a second sort.
+// SelectRecent returns at most limit observations ordered newest-to-oldest.
+// It sorts defensively so the selection is correct regardless of how the
+// caller ordered the input, and the copy protects the caller from accidental
+// reordering of its store-backed slice.
 func SelectRecent(audits []Audit, limit int) []Audit {
-	if limit <= 0 || limit >= len(audits) {
-		return append([]Audit(nil), audits...)
+	if limit <= 0 {
+		return []Audit{}
 	}
 	ordered := SortAudits(audits)
-	return append([]Audit(nil), ordered[len(ordered)-limit:]...)
+	if limit >= len(ordered) {
+		return ordered
+	}
+	return append([]Audit(nil), ordered[:limit]...)
 }

@@ -114,7 +114,6 @@ func (s *Server) handleEvaluationReport(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	items = evalreport.SortAudits(items)
 	items = evalreport.SelectRecent(items, limit)
 	response := map[string]any{
 		"evaluations":  items,
