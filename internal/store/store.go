@@ -71,7 +71,7 @@ func (s *Store) loadAll() error {
 	for _, seg := range segs {
 		s.segments[seg.ID] = seg
 	}
-	if err := loadEvaluationCount(s.db, &s.evalCnt); err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM evaluations`).Scan(&s.evalCnt); err != nil {
 		return err
 	}
 	return nil

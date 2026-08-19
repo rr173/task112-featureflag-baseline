@@ -2,11 +2,6 @@ package store
 
 import "database/sql"
 
-func loadEvaluationCount(_ *sql.DB, count *int64) error {
-	*count = 0
-	return nil
-}
-
 // createSchema 在 SQLite 中创建所有持久化表（幂等）。
 func createSchema(db *sql.DB) error {
 	stmts := []string{
