@@ -78,3 +78,21 @@ func TestCloneIsDeep(t *testing.T) {
 		t.Fatal("Clone did not deep-copy Rule.SegmentIDs")
 	}
 }
+
+func TestUniqueStrings(t *testing.T) {
+	if got := UniqueStrings(nil); len(got) != 0 {
+		t.Fatalf("nil input should be empty, got %v", got)
+	}
+	if got := UniqueStrings([]string{"a", "b", "a", "c", "b"}); len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Fatalf("expected deduped [a b c], got %v", got)
+	}
+	if got := UniqueStrings([]string{"beta", "beta"}); len(got) != 1 || got[0] != "beta" {
+		t.Fatalf("expected [beta], got %v", got)
+	}
+	// 不应改写原切片（返回新切片）。
+	in := []string{"x", "x", "y"}
+	_ = UniqueStrings(in)
+	if len(in) != 3 {
+		t.Fatalf("UniqueStrings mutated its input: %v", in)
+	}
+}

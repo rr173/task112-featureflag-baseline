@@ -61,7 +61,8 @@ func (s *Server) handleSetTags(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "flag not found: "+key)
 		return
 	}
-	f.Tags = append([]string(nil), body.Tags...)
+	// 去重后再落库：同一开关的同一标签只保留一次，避免标签统计把它算成多个开关。
+	f.Tags = model.UniqueStrings(body.Tags)
 	if err := s.store.UpdateFlag(f); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -73,7 +74,13 @@ func (s *Server) handleSetTags(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
 	counts := map[string]int{}
 	for _, f := range s.store.ListFlags() {
+		// 同一标签对同一开关只计一次：即使开关的 Tags 含重复值也只算 1 个。
+		seen := map[string]struct{}{}
 		for _, t := range f.Tags {
+			if _, ok := seen[t]; ok {
+				continue
+			}
+			seen[t] = struct{}{}
 			counts[t]++
 		}
 	}

@@ -266,8 +266,18 @@ func NormalizeTargetKey(target string) string {
 }
 
 // UniqueStrings removes duplicate values while preserving first-seen order.
+// 同一值只保留首次出现的那一次，使「同一标签对同一开关只计一次」在存储层即成立。
 func UniqueStrings(values []string) []string {
-	return append([]string(nil), values...)
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
 }
 
 // NewErrorResult creates the canonical result for a missing flag evaluation.
