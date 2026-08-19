@@ -88,9 +88,6 @@ func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetDependencies(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
 	deps, disabled, missing, cycle := s.store.DependencyClosure(key)
-	if cycle && len(missing) == 0 {
-		cycle = true
-	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"flag_key":     key,
 		"dependencies": deps,

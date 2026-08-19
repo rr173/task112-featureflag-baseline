@@ -121,7 +121,6 @@ func (s *Store) DependencyClosure(key string) (deps, disabled, missing []string,
 			return
 		}
 		if state[cur] == 2 {
-			cycle = true
 			return
 		}
 		f, ok := s.flags[cur]
