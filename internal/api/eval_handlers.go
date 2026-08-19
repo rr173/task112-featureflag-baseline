@@ -47,10 +47,8 @@ func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) mo
 	}
 	targetKey = model.NormalizeTargetKey(targetKey)
 	ctx := model.EvalContext{TargetKey: targetKey, Attributes: attrs}
-	// 依赖检查：任一前置开关缺失或停用，则回落默认变量。
-	for _, pre := range f.Prerequisites {
-		pf, pok := s.store.GetFlag(pre)
-		if !pok || !pf.Enabled {
+	// 依赖检查：任一前置开关缺失、停用或其传递依赖未满足，则回落默认变量。
+	if !s.prerequisitesSatisfied(f, map[string]bool{}) {
 		res := model.EvalResult{
 			FlagKey:    flagKey,
 			VariantKey: f.DefaultVariant,
@@ -59,11 +57,34 @@ func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) mo
 		}
 		_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
 		return res
-		}
 	}
 	res := eval.Evaluate(f, s.segmentLookup, ctx)
 	_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
 	return res
+}
+
+// prerequisitesSatisfied 报告 flag 的全部前置依赖（含传递依赖）是否均处于可用状态：
+// 依赖项必须存在、已启用，且其自身前置依赖亦满足。visiting 记录当前递归路径上的
+// 开关 key，用于检测并拒绝环形依赖，避免无限递归；它在回溯时清除标记，故对菱形依赖
+// （同一开关经多条路径被依赖）不会误判。
+func (s *Server) prerequisitesSatisfied(f *model.Flag, visiting map[string]bool) bool {
+	for _, pre := range f.Prerequisites {
+		if visiting[pre] {
+			// 环形依赖：视为未满足，中止该路径。
+			return false
+		}
+		pf, ok := s.store.GetFlag(pre)
+		if !ok || !pf.Enabled {
+			return false
+		}
+		visiting[pre] = true
+		sat := s.prerequisitesSatisfied(pf, visiting)
+		visiting[pre] = false
+		if !sat {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Server) handleBatchEvaluate(w http.ResponseWriter, r *http.Request) {
