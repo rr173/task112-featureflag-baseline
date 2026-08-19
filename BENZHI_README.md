@@ -48,5 +48,5 @@ docker run --rm go-task-check:arm64 --smoke-test
 ## 技术栈
 
 - Go `1.26.3`（`GOTOOLCHAIN=local`）
-- SQLite 引擎 `3.46.1`，纯 Go 驱动 `modernc.org/sqlite v1.35.0`（`CGO_ENABLED=0`）
+- SQLite 引擎 `3.46.1`，纯 Go 驱动 `modernc.org/sqlite v1.52.0`（`CGO_ENABLED=0`）
 - 依赖下载：`GOPROXY=https://goproxy.cn,direct`、`GOSUMDB=sum.golang.google.cn`
