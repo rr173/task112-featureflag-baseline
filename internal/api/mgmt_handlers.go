@@ -61,7 +61,7 @@ func (s *Server) handleSetTags(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "flag not found: "+key)
 		return
 	}
-	f.Tags = body.Tags
+	f.Tags = model.UniqueStrings(body.Tags)
 	if err := s.store.UpdateFlag(f); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -87,48 +87,7 @@ func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
 // handleGetDependencies 返回开关的传递性前置依赖闭包，并标注是否存在被停用或缺失的依赖。
 func (s *Server) handleGetDependencies(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
-	closure := map[string]bool{}
-	disabled := []string{}
-	missing := []string{}
-	cycle := false
-	stack := []string{key}
-	guard := 0
-	for len(stack) > 0 {
-		guard++
-		if guard > 10000 {
-			cycle = true
-			break
-		}
-		cur := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		f, ok := s.store.GetFlag(cur)
-		if !ok {
-			if cur != key {
-				missing = append(missing, cur)
-			}
-			continue
-		}
-		for _, p := range f.Prerequisites {
-			if closure[p] {
-				cycle = true
-				continue
-			}
-			closure[p] = true
-			pf, pok := s.store.GetFlag(p)
-			if !pok {
-				missing = append(missing, p)
-				continue
-			}
-			if !pf.Enabled {
-				disabled = append(disabled, p)
-			}
-			stack = append(stack, p)
-		}
-	}
-	deps := make([]string, 0, len(closure))
-	for d := range closure {
-		deps = append(deps, d)
-	}
+	deps, disabled, missing, cycle := s.store.DependencyClosure(key)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"flag_key":     key,
 		"dependencies": deps,

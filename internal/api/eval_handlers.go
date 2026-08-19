@@ -41,22 +41,22 @@ func (s *Server) handleEvaluateGet(w http.ResponseWriter, r *http.Request) {
 func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) model.EvalResult {
 	f, ok := s.store.GetFlag(flagKey)
 	if !ok {
-		return model.EvalResult{FlagKey: flagKey, Reason: model.ReasonError, Value: "", VariantKey: ""}
+		res := model.NewErrorResult(flagKey)
+		_ = s.store.RecordEvaluationResult(flagKey, model.NormalizeTargetKey(targetKey), res)
+		return res
 	}
+	targetKey = model.NormalizeTargetKey(targetKey)
 	ctx := model.EvalContext{TargetKey: targetKey, Attributes: attrs}
 	// 依赖检查：任一前置开关缺失或停用，则回落默认变量。
-	for _, pre := range f.Prerequisites {
-		pf, pok := s.store.GetFlag(pre)
-		if !pok || !pf.Enabled {
-			res := model.EvalResult{
-				FlagKey:    flagKey,
-				VariantKey: f.DefaultVariant,
-				Value:      f.VariantValue(f.DefaultVariant),
-				Reason:     "prerequisite",
-			}
-			_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
-			return res
+	if !s.store.PrerequisitesSatisfied(f.Key) {
+		res := model.EvalResult{
+			FlagKey:    flagKey,
+			VariantKey: f.DefaultVariant,
+			Value:      f.VariantValue(f.DefaultVariant),
+			Reason:     model.ReasonPrerequisite,
 		}
+		_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
+		return res
 	}
 	res := eval.Evaluate(f, s.segmentLookup, ctx)
 	_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
@@ -114,7 +114,6 @@ func (s *Server) handleEvaluationReport(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	items = evalreport.SortAudits(items)
 	items = evalreport.SelectRecent(items, limit)
 	response := map[string]any{
 		"evaluations":  items,

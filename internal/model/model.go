@@ -4,6 +4,7 @@ package model
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -67,6 +68,12 @@ type EvalContext struct {
 	Attributes map[string]string `json:"attributes,omitempty"`
 }
 
+// Attribute returns an attribute and whether it was explicitly supplied.
+func (c EvalContext) Attribute(name string) (string, bool) {
+	v, ok := c.Attributes[name]
+	return v, ok
+}
+
 // EvalResult 表示一次求值结果。
 type EvalResult struct {
 	FlagKey    string `json:"flag_key"`
@@ -96,11 +103,12 @@ type Stats struct {
 
 // 求值原因常量。
 const (
-	ReasonDefault  = "default"
-	ReasonRule     = "rule"
-	ReasonRollout  = "rollout"
-	ReasonDisabled = "disabled"
-	ReasonError    = "error"
+	ReasonDefault      = "default"
+	ReasonRule         = "rule"
+	ReasonRollout      = "rollout"
+	ReasonDisabled     = "disabled"
+	ReasonError        = "error"
+	ReasonPrerequisite = "prerequisite"
 )
 
 // ErrInvalidKey 表示 key 非法。
@@ -213,9 +221,9 @@ func (f *Flag) VariantValue(key string) string {
 // Clone 返回 Flag 的深拷贝（用于并发安全的快照）。
 func (f *Flag) Clone() *Flag {
 	cp := *f
-	cp.Variants = append([]Variant(nil), f.Variants...)
-	cp.Tags = append([]string(nil), f.Tags...)
-	cp.Prerequisites = append([]string(nil), f.Prerequisites...)
+	cp.Variants = append([]Variant{}, f.Variants...)
+	cp.Tags = append([]string{}, f.Tags...)
+	cp.Prerequisites = append([]string{}, f.Prerequisites...)
 	rules := make([]Rule, len(f.Rules))
 	for i := range f.Rules {
 		r := f.Rules[i]
@@ -246,6 +254,39 @@ func NormalizeActor(actor string) string {
 		return "anonymous"
 	}
 	return actor
+}
+
+// NormalizeTargetKey gives empty evaluation identities a stable persisted name.
+func NormalizeTargetKey(target string) string {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return "anonymous"
+	}
+	return target
+}
+
+// UniqueStrings removes duplicate values while preserving first-seen order.
+func UniqueStrings(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+// NewErrorResult creates the canonical result for a missing flag evaluation.
+func NewErrorResult(flagKey string) EvalResult {
+	return EvalResult{FlagKey: flagKey, Reason: ReasonError}
+}
+
+// AuditID makes generated audit identifiers unique even when the clock does not advance.
+func AuditID(ts int64, sequence uint64) string {
+	return fmt.Sprintf("aud_%d_%d", ts, sequence)
 }
 
 // MarshalJSON 的辅助：把切片序列化为 JSON 文本（供 SQLite 存储）。

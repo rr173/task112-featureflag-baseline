@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -70,7 +71,93 @@ func (s *Store) loadAll() error {
 	for _, seg := range segs {
 		s.segments[seg.ID] = seg
 	}
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM evaluations`).Scan(&s.evalCnt); err != nil {
+		return err
+	}
 	return nil
+}
+
+// PrerequisitesSatisfied checks the full prerequisite graph without mistaking a diamond for a cycle.
+func (s *Store) PrerequisitesSatisfied(key string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	visiting := map[string]bool{}
+	visited := map[string]bool{}
+	var walk func(string) bool
+	walk = func(cur string) bool {
+		if visiting[cur] {
+			return false
+		}
+		if visited[cur] {
+			return true
+		}
+		f, ok := s.flags[cur]
+		if !ok || !f.Enabled {
+			return false
+		}
+		visiting[cur] = true
+		for _, pre := range f.Prerequisites {
+			if !walk(pre) {
+				return false
+			}
+		}
+		delete(visiting, cur)
+		visited[cur] = true
+		return true
+	}
+	return walk(key)
+}
+
+// DependencyClosure returns each transitive prerequisite once and reports real cycles only.
+func (s *Store) DependencyClosure(key string) (deps, disabled, missing []string, cycle bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	state := map[string]uint8{}
+	seen := map[string]bool{}
+	var walk func(string)
+	walk = func(cur string) {
+		if state[cur] == 1 {
+			cycle = true
+			return
+		}
+		if state[cur] == 2 {
+			return
+		}
+		f, ok := s.flags[cur]
+		if !ok {
+			if cur != key && !seen[cur] {
+				missing = append(missing, cur)
+				seen[cur] = true
+			}
+			return
+		}
+		state[cur] = 1
+		for _, pre := range f.Prerequisites {
+			if !seen[pre] {
+				deps = append(deps, pre)
+				seen[pre] = true
+			}
+			if pf, ok := s.flags[pre]; ok && !pf.Enabled && !containsString(disabled, pre) {
+				disabled = append(disabled, pre)
+			}
+			walk(pre)
+		}
+		state[cur] = 2
+	}
+	walk(key)
+	sort.Strings(deps)
+	sort.Strings(disabled)
+	sort.Strings(missing)
+	return deps, disabled, missing, cycle
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Store) loadFlags() ([]*model.Flag, error) {
@@ -325,7 +412,7 @@ func (s *Store) AppendAudit(e model.AuditEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e.ID == "" {
-		e.ID = fmt.Sprintf("aud_%d", s.clk.NowMillis())
+		e.ID = model.AuditID(s.clk.NowMillis(), atomic.AddUint64(&s.evalSeq, 1))
 	}
 	if e.Ts == 0 {
 		e.Ts = s.clk.NowMillis()
@@ -374,7 +461,7 @@ func (s *Store) RecordEvaluation() {
 // process restart instead of exposing only an in-memory counter.
 func (s *Store) RecordEvaluationResult(flagKey, targetKey string, result model.EvalResult) error {
 	s.RecordEvaluation()
-	enabled := result.Reason != model.ReasonDisabled && result.Reason != model.ReasonError
+	enabled := result.Reason != model.ReasonDisabled && result.Reason != model.ReasonPrerequisite && result.Reason != model.ReasonError
 	id := fmt.Sprintf("ev_%d_%d", model.NowMillis(), atomic.AddUint64(&s.evalSeq, 1))
 	_, err := s.db.Exec(`INSERT INTO evaluations(id,ts,flag_key,target_key,variant_key,enabled,reason) VALUES(?,?,?,?,?,?,?)`,
 		id, model.NowMillis(), flagKey, targetKey, result.VariantKey, boolToInt(enabled), result.Reason)

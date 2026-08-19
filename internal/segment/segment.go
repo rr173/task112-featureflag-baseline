@@ -33,7 +33,10 @@ func MatchSegment(seg *model.Segment, ctx model.EvalContext) bool {
 
 // matchRuleAttr 按操作符比较上下文属性值与谓词值。
 func matchRuleAttr(r model.SegmentRule, ctx model.EvalContext) bool {
-	val := ctx.Attributes[r.Attribute]
+	val, present := ctx.Attribute(r.Attribute)
+	if !present {
+		return false
+	}
 	switch r.Op {
 	case "eq":
 		return val == r.Value
