@@ -412,7 +412,7 @@ func (s *Store) AppendAudit(e model.AuditEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e.ID == "" {
-		e.ID = model.AuditID(s.clk.NowMillis(), 0)
+		e.ID = model.AuditID(s.clk.NowMillis(), atomic.AddUint64(&s.evalSeq, 1))
 	}
 	if e.Ts == 0 {
 		e.Ts = s.clk.NowMillis()
