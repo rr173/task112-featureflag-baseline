@@ -267,7 +267,16 @@ func NormalizeTargetKey(target string) string {
 
 // UniqueStrings removes duplicate values while preserving first-seen order.
 func UniqueStrings(values []string) []string {
-	return append([]string(nil), values...)
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
 
 // NewErrorResult creates the canonical result for a missing flag evaluation.

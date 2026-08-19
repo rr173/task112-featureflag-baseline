@@ -61,7 +61,7 @@ func (s *Server) handleSetTags(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "flag not found: "+key)
 		return
 	}
-	f.Tags = append([]string(nil), body.Tags...)
+	f.Tags = model.UniqueStrings(body.Tags)
 	if err := s.store.UpdateFlag(f); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
