@@ -100,7 +100,6 @@ func (s *Store) PrerequisitesSatisfied(key string) bool {
 			if !walk(pre) {
 				return false
 			}
-			break
 		}
 		delete(visiting, cur)
 		visited[cur] = true

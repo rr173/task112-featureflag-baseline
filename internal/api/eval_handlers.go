@@ -48,9 +48,7 @@ func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) mo
 	targetKey = model.NormalizeTargetKey(targetKey)
 	ctx := model.EvalContext{TargetKey: targetKey, Attributes: attrs}
 	// 依赖检查：任一前置开关缺失或停用，则回落默认变量。
-	for _, pre := range f.Prerequisites {
-		pf, pok := s.store.GetFlag(pre)
-		if !pok || !pf.Enabled {
+	if !s.store.PrerequisitesSatisfied(f.Key) {
 		res := model.EvalResult{
 			FlagKey:    flagKey,
 			VariantKey: f.DefaultVariant,
@@ -59,7 +57,6 @@ func (s *Server) evaluate(flagKey, targetKey string, attrs map[string]string) mo
 		}
 		_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
 		return res
-		}
 	}
 	res := eval.Evaluate(f, s.segmentLookup, ctx)
 	_ = s.store.RecordEvaluationResult(flagKey, targetKey, res)
