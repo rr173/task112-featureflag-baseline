@@ -257,7 +257,13 @@ func NormalizeActor(actor string) string {
 }
 
 // NormalizeTargetKey gives empty evaluation identities a stable persisted name.
+// 空值或纯空白回退为 anonymous，使匿名访问在报表与审计中有一致的身份表示，
+// 从而可稳定聚合（与 NormalizeActor 对齐）。
 func NormalizeTargetKey(target string) string {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return "anonymous"
+	}
 	return target
 }
 

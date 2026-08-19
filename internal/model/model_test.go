@@ -66,6 +66,22 @@ func TestTreatmentVariantKey(t *testing.T) {
 	}
 }
 
+func TestNormalizeTargetKey(t *testing.T) {
+	cases := map[string]string{
+		"":          "anonymous",
+		"   ":       "anonymous",
+		"\t\n":      "anonymous",
+		"u1":        "u1",
+		"  u1  ":    "u1",
+		"anonymous": "anonymous",
+	}
+	for in, want := range cases {
+		if got := NormalizeTargetKey(in); got != want {
+			t.Errorf("NormalizeTargetKey(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestCloneIsDeep(t *testing.T) {
 	f := &Flag{Key: "k", Variants: []Variant{{Key: "a"}}, Rules: []Rule{{ID: "r", SegmentIDs: []string{"s"}}}}
 	cp := f.Clone()
