@@ -461,7 +461,13 @@ func (s *Store) RecordEvaluation() {
 // process restart instead of exposing only an in-memory counter.
 func (s *Store) RecordEvaluationResult(flagKey, targetKey string, result model.EvalResult) error {
 	s.RecordEvaluation()
-	enabled := result.Reason != model.ReasonDisabled && result.Reason != model.ReasonError
+	// An unsatisfied prerequisite falls back to the default variant, i.e. a
+	// closed result. It must not count as actually enabled, otherwise the
+	// report's enable rate reflects the flag being active rather than the
+	// actual enabled outcome.
+	enabled := result.Reason != model.ReasonDisabled &&
+		result.Reason != model.ReasonError &&
+		result.Reason != model.ReasonPrerequisite
 	id := fmt.Sprintf("ev_%d_%d", model.NowMillis(), atomic.AddUint64(&s.evalSeq, 1))
 	_, err := s.db.Exec(`INSERT INTO evaluations(id,ts,flag_key,target_key,variant_key,enabled,reason) VALUES(?,?,?,?,?,?,?)`,
 		id, model.NowMillis(), flagKey, targetKey, result.VariantKey, boolToInt(enabled), result.Reason)

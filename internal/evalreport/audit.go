@@ -1,10 +1,6 @@
 package evalreport
 
-import (
-	"sort"
-
-	"task112-featureflag/internal/model"
-)
+import "sort"
 
 type Audit struct {
 	Flag      string
@@ -29,13 +25,18 @@ func SortAudits(audits []Audit) []Audit {
 	return out
 }
 
+// EnabledRate returns the fraction of audits whose evaluation actually
+// enabled the flag for the target. A closed result such as a failed
+// prerequisite (which falls back to the default variant) is not counted,
+// so the rate reflects the actual enabled outcome rather than the flag
+// merely being active.
 func EnabledRate(audits []Audit) float64 {
 	if len(audits) == 0 {
 		return 0
 	}
 	enabled := 0
 	for _, audit := range audits {
-		if audit.Enabled || audit.Reason == model.ReasonPrerequisite {
+		if audit.Enabled {
 			enabled++
 		}
 	}
