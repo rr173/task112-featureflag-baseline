@@ -1,10 +1,6 @@
 package evalreport
 
-import (
-	"sort"
-
-	"task112-featureflag/internal/model"
-)
+import "sort"
 
 type Audit struct {
 	Flag      string
@@ -35,7 +31,7 @@ func EnabledRate(audits []Audit) float64 {
 	}
 	enabled := 0
 	for _, audit := range audits {
-		if audit.Enabled || audit.Reason == model.ReasonPrerequisite {
+		if audit.Enabled {
 			enabled++
 		}
 	}
